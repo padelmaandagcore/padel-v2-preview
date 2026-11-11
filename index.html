@@ -160,6 +160,28 @@
 }
 #padel-integrated-review .review-controls select option{color:#17312c;background:#ffffff;}
 #padel-integrated-review .review-controls :focus-visible{outline:3px solid #126b4a;outline-offset:2px;}
+/* Android Chrome review-toolbar contrast: isolate from inherited dark color scheme. */
+#padel-integrated-review > details.review-controls,
+#padel-integrated-review > details.review-controls > summary,
+#padel-integrated-review > details.review-controls > label,
+#padel-integrated-review > p.review-scope {
+  color-scheme: light !important;
+  color: #17312c !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #17312c;
+}
+#padel-integrated-review > details.review-controls > summary { font-weight: 700; cursor: pointer; }
+#padel-integrated-review > details.review-controls > select,
+#padel-integrated-review > details.review-controls > button {
+  color-scheme: light !important;
+  color: #17312c !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #17312c;
+}
+#padel-integrated-review > details.review-controls > select option {
+  color: #17312c !important;
+  background-color: #ffffff !important;
+}
 </style>
 <details class="review-controls">
 <summary>Beheerreview · scenario kiezen</summary>
@@ -775,8 +797,7 @@ const startOfBrusselsDay=day=>brusselsInstant(day,'00:00');
 const atBrusselsTime=brusselsInstant;
 const sessionEndAt=(db,e)=>new Date(Date.parse(atBrusselsTime(e.date,e.startTime))+(isExtendedSession(db,e)?120:90)*60000).toISOString();
 const afterSession=(evening,db)=>new Date(Math.max(Date.parse(startOfBrusselsDay(dayPlus(evening.date,1))),Date.parse(sessionEndAt(db,evening)))).toISOString();
-function nextPlanned(db,current){
- const byId=db.Meta.nextEveningId&&db.Evenings.find(e=>e.eveningId===db.Meta.nextEveningId);
+function nextPlanned(db,current){ const byId=db.Meta.nextEveningId&&db.Evenings.find(e=>e.eveningId===db.Meta.nextEveningId);
  if(byId){if(byId.eveningId===current.eveningId||byId.date<=current.date)error('INVALID_NEXT_EVENING');return byId}
  return db.Evenings.filter(e=>e.eveningId!==current.eveningId&&e.date>current.date).sort((a,b)=>a.date.localeCompare(b.date))[0]??null;
 }
@@ -797,7 +818,8 @@ function changeSession(db,{eveningId,date,startTime,now,actorRole='ADMIN',confir
  if(source.length&&Date.parse(now)>=Date.parse(atBrusselsTime(oldDate,e.startTime)))error('SESSION_ALREADY_STARTED');
  if(recorded&&!confirmedClubBookings)error('CLUB_BOOKING_VERIFICATION_REQUIRED');
  // Prevalidate all state before changing any row.
- if((db.BookingTasks??[]).some(t=>t.targetDate===date&&!affected.includes(t)))error('BOOKING_DATE_COLLISION'); e.date=date;e.startTime=startTime;e.version=Number(e.version??0)+1;
+ if((db.BookingTasks??[]).some(t=>t.targetDate===date&&!affected.includes(t)))error('BOOKING_DATE_COLLISION');
+ e.date=date;e.startTime=startTime;e.version=Number(e.version??0)+1;
  if(e.closesAt)e.closesAt=atBrusselsTime(date,'19:00');
  for(const t of affected){t.targetDate=date;t.updatedAt=now}
  // Source date/time changes never close or postpone released future booking tasks.
@@ -1574,8 +1596,7 @@ function scenarioState(id,ownerRef){
   }
   if(['booking','bookers'].includes(id))clock='2026-10-12T18:30:00Z';
   if(id==='capacity'){
-   db.BookingTasks.filter(t=>t.enableEveningId===eid).slice(0,2).forEach(t=>{t.status='NOT_BOOKED';t.notBookedReason=JSON.stringify({code:'NO_COURT_AVAILABLE'});});
-   clock='2026-10-12T18:30:00Z';
+   db.BookingTasks.filter(t=>t.enableEveningId===eid).slice(0,2).forEach(t=>{t.status='NOT_BOOKED';t.notBookedReason=JSON.stringify({code:'NO_COURT_AVAILABLE'});});   clock='2026-10-12T18:30:00Z';
    const t=db.BookingTasks[2];dispatch(db,{authRef:Players.find(p=>p.playerId===t.ownerId).authRef},'book',{bookingTaskId:t.bookingTaskId,court:5},clock,external);
   }
   if(id==='change')db.SessionChangeRequests.push({requestId:'review-change',eveningId:Evenings[2].eveningId,reportedByPlayerId:db.BookingTasks[0].ownerId,proposedDate:'2026-10-27',proposedStartTime:'19:30',status:'OPEN',createdAt:clock});
@@ -1596,7 +1617,8 @@ function reviewDispatch(db,principal,action,input,now,external,authorized,review
   for(const k of Object.keys(external))if(k!=='security')delete external[k];Object.assign(external,seeded.external);Object.assign(review,seeded.review);
  }
  if(action==='reviewAdvance'){if(!review.clock)throw Error('SCENARIO_REQUIRED');review.clock=db.Meta.transitionAt;advance(db,review.clock);}
- const actor=action.startsWith('review')?owner:input.testActorId?db.Players.find(p=>p.playerId===input.testActorId&&p.active):owner; if(!actor)throw Error('UNAUTHORIZED');
+ const actor=action.startsWith('review')?owner:input.testActorId?db.Players.find(p=>p.playerId===input.testActorId&&p.active):owner;
+ if(!actor)throw Error('UNAUTHORIZED');
  const result=action.startsWith('review')?{data:read(db,actor,external,review.clock??now)}:dispatch(db,{authRef:actor.authRef},action,input,review.clock??now,external);
  result.data.testReview={scenarios:SCENARIOS,scenarioId:review.scenarioId??null,clock:review.clock??now,players:db.Players.filter(p=>p.active).map(p=>({playerId:p.playerId,name:p.name,role:p.role}))};return result;
 }

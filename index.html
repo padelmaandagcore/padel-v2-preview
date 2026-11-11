@@ -1716,9 +1716,9 @@ const {createSessionReview,sessionReviewModel}=SessionReview;
 const {adminReviewState}=V2.adminReview;
 const {dispatch,advance}=V2.service;
 const INTEGRATED_SCENARIOS=[
- {id:'rcr001-running',group:'Kas & Voorraad',title:'Kas & Voorraad · lopende cyclus',base:'finance',tab:'Ballen',cashStock:'running'},
- {id:'rcr001-new',group:'Kas & Voorraad',title:'Kas & Voorraad · nieuwe cyclus',base:'finance',tab:'Ballen',cashStock:'new'},
- {id:'rcr001-unavailable',group:'Kas & Voorraad',title:'Kas & Voorraad · gegevens niet beschikbaar',base:'finance',tab:'Ballen',cashStock:'unavailable'},
+ {id:'rcr001-running',group:'Kas & Voorraad',title:'Kas & Voorraad · lopende cyclus',base:'ready',tab:'Ballen',cashStock:'running'},
+ {id:'rcr001-new',group:'Kas & Voorraad',title:'Kas & Voorraad · nieuwe cyclus',base:'ready',tab:'Ballen',cashStock:'new'},
+ {id:'rcr001-unavailable',group:'Kas & Voorraad',title:'Kas & Voorraad · gegevens niet beschikbaar',base:'ready',tab:'Ballen',cashStock:'unavailable'},
  {id:'initial',group:'Start en openen',title:'Lege start · drie gesloten weken',base:'initial',panel:'bookings'},
  {id:'waiting',group:'Start en openen',title:'Week 1 · één Gelukt en twee Open',base:'waiting'},
  {id:'ready',group:'Start en openen',title:'Week 1 · alle boekingen afgerond',base:'ready'},
@@ -1890,7 +1890,10 @@ return (() => {
  function originalMessage(t,bad=false,kind='success'){const category=bad?'negative':kind;$('#message').textContent=t;$('#message').className='notice '+category;if(category==='warn')$('#message').innerHTML='<strong>'+esc(t)+'</strong>';}
  async function rpc(action,input={}){
   const start=performance.now();let result;if(testActorId&&!action.startsWith('review'))input={...input,testActorId};
-  throw Error('Offline review only');
+  // Offline-only: use the injected in-memory review adapter, never a network API.
+  result=await new Promise((resolve,reject)=>{
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).v2Request(action,input);
+  });
   if(result.error)throw Error(result.error);if(result.csrf)csrf=result.csrf;
   if(result.data){for(const t of result.data.tasks??[]){const old=data?.tasks.find(x=>x.bookingTaskId===t.bookingTaskId);if(old&&old.targetDate!==t.targetDate)delete drafts[t.bookingTaskId];}lastReadAt=new Date().toLocaleTimeString('nl-BE');data=result.data;if(!selected||!data.slots.some(s=>s.evening.eveningId===selected))selected=data.slots[0]?.evening.eveningId;}
   const elapsed=performance.now()-start;return {...result,elapsed};
